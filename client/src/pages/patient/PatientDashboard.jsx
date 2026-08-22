@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // client/src/pages/patient/PatientDashboard.jsx
 import { useAuth } from '../../context/AuthContext';
 import useOffline from '../../hooks/useOffline';
@@ -155,3 +156,5 @@ const PatientDashboard = () => {
 };
 
 export default PatientDashboard;
+=======
+>>>>>>> 73b11a57e02b61e5c5f696bc2c5cb4af754260fe

@@ -6,8 +6,11 @@ const express     = require('express');
 const cors        = require('cors');
 const helmet      = require('helmet');
 const { Server }  = require('socket.io');
-const connectDB   = require('./config/db');
-const authRoutes  = require('./routes/authRoutes');
+const connectDB          = require('./config/db');
+const authRoutes         = require('./routes/authRoutes');
+const appointmentRoutes  = require('./routes/appointmentRoutes');
+const healthRecordRoutes = require('./routes/healthRecordRoutes');
+const doctorRoutes       = require('./routes/doctorRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 // ─── Database ─────────────────────────────────────────────────────────────────
@@ -105,10 +108,12 @@ app.get('/api/health', (_req, res) =>
 );
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-// Phase 2+: app.use('/api/appointments', appointmentRoutes);
-// Phase 3+: app.use('/api/triage',       triageRoutes);
-// Phase 4+: app.use('/api/hospitals',    hospitalRoutes);
+app.use('/api/auth',           authRoutes);
+app.use('/api/appointments',   appointmentRoutes);
+app.use('/api/health-records', healthRecordRoutes);
+app.use('/api/doctors',        doctorRoutes);
+// Phase 3+: app.use('/api/triage',    triageRoutes);
+// Phase 4+: app.use('/api/hospitals', hospitalRoutes);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);
