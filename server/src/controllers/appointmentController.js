@@ -70,6 +70,13 @@ const bookAppointment = async (req, res, next) => {
       { path: 'patientId',  select: 'profile.firstName profile.lastName' },
     ]);
 
+    // Emit real-time event BEFORE sending the response
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hospital:${hospitalId}`).emit('appointment:new', appointment);
+      io.to(`doctor:${doctorId}`).emit('appointment:new', appointment);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Appointment booked successfully.',
@@ -209,6 +216,13 @@ const updateAppointmentStatus = async (req, res, next) => {
       { path: 'doctorId',  select: 'profile.firstName profile.lastName profile.specialization' },
       { path: 'patientId', select: 'profile.firstName profile.lastName' },
     ]);
+
+    // Emit real-time status update
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hospital:${appointment.hospitalId}`).emit('appointment:updated', appointment);
+      io.to(`doctor:${appointment.doctorId._id}`).emit('appointment:updated', appointment);
+    }
 
     return res.status(200).json({ success: true, message: 'Appointment updated.', data: appointment });
   } catch (err) {
