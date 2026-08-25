@@ -1,0 +1,78 @@
+// client/src/pages/admin/tabs/OverviewTab.jsx
+import { useState, useEffect } from 'react';
+import { getStats } from '../../../services/adminService';
+
+const StatCard = ({ icon, label, value, sub, color }) => (
+  <div className="glass-card animate-fade-in-up" style={{ padding: 'var(--sp-5)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--sp-3)' }}>
+      <span style={{ fontSize: '1.8rem' }}>{icon}</span>
+      <span style={{ fontSize: '2.2rem', fontWeight: 800, color }}>{value}</span>
+    </div>
+    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem', marginBottom: 4 }}>{label}</div>
+    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{sub}</div>
+  </div>
+);
+
+const AdminOverviewTab = ({ user }) => {
+  const [stats,   setStats]   = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
+
+  useEffect(() => {
+    getStats()
+      .then(r => { setStats(r.data); setLoading(false); })
+      .catch(e => { setError(e.response?.data?.message || 'Failed to load stats'); setLoading(false); });
+  }, []);
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ marginBottom: 'var(--sp-8)', animation: 'fadeInDown 0.4s ease both' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', letterSpacing: '0.1em', marginBottom: 6 }}>HOSPITAL ADMIN PORTAL</p>
+        <h2 style={{ color: 'var(--text-primary)', marginBottom: 6 }}>
+          {stats?.hospital?.name || 'Hospital Dashboard'}
+        </h2>
+        <p style={{ fontSize: '0.88rem' }}>Welcome back, {user?.profile?.firstName}. Here's your hospital at a glance.</p>
+      </div>
+
+      {loading && <div style={{ textAlign: 'center', padding: 'var(--sp-12)' }}><span className="spinner spinner-lg" /></div>}
+      {error   && <div className="alert alert-error">{error}</div>}
+
+      {stats && (
+        <>
+          {/* Stat grid */}
+          <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
+            <StatCard icon="🩺" label="Active Doctors"     value={stats.totalDoctors}   sub="In this hospital"            color="var(--cyan)" />
+            <StatCard icon="🧑" label="Registered Patients" value={stats.totalPatients}  sub="All time"                    color="var(--indigo)" />
+            <StatCard icon="📅" label="Today's Appointments" value={stats.todayAppts}    sub={`${stats.pendingAppts} pending`} color="var(--amber)" />
+            <StatCard icon="✅" label="Completed Today"     value={stats.completedAppts} sub="Consultations done"          color="var(--emerald)" />
+            <StatCard icon="📋" label="Health Records"      value={stats.totalRecords}   sub="All records in vault"        color="var(--indigo)" />
+            <StatCard icon="🛏️" label="ICU Beds"            value={stats.bedsICU}        sub="Configured capacity"         color="var(--rose)" />
+            <StatCard icon="🏥" label="General Beds"        value={stats.bedsGeneral}    sub="Configured capacity"         color="var(--amber)" />
+            <StatCard icon="🚨" label="Emergency Beds"      value={stats.bedsEmergency}  sub="Configured capacity"         color="var(--red)" />
+          </div>
+
+          {/* Hospital info */}
+          <div className="glass-card" style={{ padding: 'var(--sp-6)' }}>
+            <h4 style={{ color: 'var(--text-primary)', marginBottom: 'var(--sp-4)', paddingBottom: 'var(--sp-3)', borderBottom: '1px solid var(--border-subtle)' }}>
+              🏥 Hospital Information
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--sp-4)' }}>
+              {[
+                { label: 'Hospital Name', value: stats.hospital?.name },
+                { label: 'Hospital Code', value: stats.hospital?.code },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{value || '—'}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default AdminOverviewTab;
