@@ -1,4 +1,5 @@
 // client/src/components/DashboardShell.jsx
+import ThemeToggle from './ThemeToggle';
 /**
  * DashboardShell — reusable sidebar + main layout.
  * Used by PatientDashboard and DoctorDashboard.
@@ -115,6 +116,12 @@ const DashboardShell = ({
         {footerBadge && (
           <div style={{ marginBottom: 'var(--sp-2)' }}>{footerBadge}</div>
         )}
+
+        {/* Theme toggle */}
+        <div style={{ marginBottom: 'var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>Theme</span>
+          <ThemeToggle />
+        </div>
 
         {/* Logout */}
         <button

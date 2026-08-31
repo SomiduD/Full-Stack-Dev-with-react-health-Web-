@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import useOffline from '../../hooks/useOffline';
+import ThemeToggle from '../../components/ThemeToggle';
 
 // ─── Portal definitions ───────────────────────────────────────────────────────
 const PORTALS = [
@@ -150,7 +151,13 @@ const LoginPage = () => {
       minHeight:    '100svh',
       display:      'flex',
       background:   'var(--bg-base)',
+      position:     'relative',
     }}>
+      {/* Theme toggle — top right corner */}
+      <div style={{ position: 'absolute', top: 20, right: 24, zIndex: 100 }}>
+        <ThemeToggle />
+      </div>
+
       {/* ══════════════ LEFT PANEL ══════════════ */}
       <div style={{
         width:       '42%',
@@ -401,10 +408,11 @@ const LoginPage = () => {
                   background: isSubmitting
                     ? 'var(--bg-elevated)'
                     : `linear-gradient(135deg, ${portal.color}, ${portal.color}cc)`,
-                  color:      isSubmitting ? 'var(--text-muted)' : 'var(--bg-base)',
+                  color:      isSubmitting ? 'var(--text-muted)' : '#ffffff',
                   boxShadow:  isSubmitting ? 'none' : portal.glow,
                   transition: 'all var(--t-base)',
                   display:    'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  opacity:    isSubmitting ? 0.7 : 1,
                 }}
               >
                 {isSubmitting ? (

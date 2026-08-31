@@ -115,8 +115,16 @@ const registerUser = async ({ email, password, role, hospitalCode, profile }) =>
  * @param {string} password
  */
 const loginUser = async (email, password) => {
-  // Explicitly select the fields that are excluded by default
-  const user = await User.findOne({ email }).select('+passwordHash +refreshTokens +passwordChangedAt');
+  let user;
+  try {
+    // Explicitly select the fields that are excluded by default
+    user = await User.findOne({ email }).select('+passwordHash +refreshTokens +passwordChangedAt');
+  } catch (dbErr) {
+    // DB connection error — don't leak "Invalid email/password", surface real problem
+    const err = new Error('Unable to connect to the database. Please try again shortly.');
+    err.statusCode = 503;
+    throw err;
+  }
 
   if (!user || !(await user.comparePassword(password))) {
     const err = new Error('Invalid email or password.');

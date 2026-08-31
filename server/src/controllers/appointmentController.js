@@ -70,6 +70,13 @@ const bookAppointment = async (req, res, next) => {
       { path: 'patientId',  select: 'profile.firstName profile.lastName' },
     ]);
 
+    // Emit real-time event BEFORE sending the response
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hospital:${hospitalId}`).emit('appointment:new', appointment);
+      io.to(`doctor:${doctorId}`).emit('appointment:new', appointment);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Appointment booked successfully.',
@@ -173,12 +180,33 @@ const getDoctorSchedule = async (req, res, next) => {
 const updateAppointmentStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, doctorNotes, cancelledReason } = req.body;
+    const { status, doctorNotes, cancelledReason, version } = req.body;
     const { role, id: userId } = req.user;
 
     const appointment = await Appointment.findById(id);
     if (!appointment) {
       return res.status(404).json({ success: false, message: 'Appointment not found.' });
+    }
+
+    // ─── Optimistic Locking / Conflict Detection ─────────────────────────────
+    // If the client sends a `version` field, verify it matches the current __v.
+    // A mismatch means another user already modified this document — surface the
+    // conflict instead of silently overwriting it (satisfies concurrency requirement).
+    if (version !== undefined && version !== appointment.__v) {
+      const io = req.app.get('io');
+      if (io) {
+        // Notify the requesting client that their version is stale
+        io.to(`hospital:${appointment.hospitalId}`).emit('appointment:conflict', {
+          appointmentId: appointment._id,
+          message:       'This appointment was modified by another user.',
+          serverVersion: appointment,
+        });
+      }
+      return res.status(409).json({
+        success:       false,
+        message:       'Conflict: this appointment was updated by another user. Please refresh and try again.',
+        serverVersion: appointment,
+      });
     }
 
     // Doctors can confirm/complete/cancel; patients can only cancel their own
@@ -204,11 +232,18 @@ const updateAppointmentStatus = async (req, res, next) => {
       appointment.cancelledBy = role === ROLES.PATIENT ? 'patient' : 'doctor';
     }
 
-    await appointment.save();
+    await appointment.save(); // Mongoose auto-increments __v on save()
     await appointment.populate([
       { path: 'doctorId',  select: 'profile.firstName profile.lastName profile.specialization' },
       { path: 'patientId', select: 'profile.firstName profile.lastName' },
     ]);
+
+    // Emit real-time status update so all connected clients stay in sync
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hospital:${appointment.hospitalId}`).emit('appointment:updated', appointment);
+      io.to(`doctor:${appointment.doctorId._id}`).emit('appointment:updated', appointment);
+    }
 
     return res.status(200).json({ success: true, message: 'Appointment updated.', data: appointment });
   } catch (err) {

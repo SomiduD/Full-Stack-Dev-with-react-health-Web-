@@ -6,7 +6,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ─── Design Tokens ─────────────────────────────────────────────────────────── */
+/* ─── Design Tokens — Dark Theme (default fallback) ─────────────────────────── */
 :root {
   /* Background layers */
   --bg-base:     #060d1f;
@@ -82,6 +82,70 @@
   --t-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ─── Light Theme (Day) ──────────────────────────────────────────────────────── */
+[data-theme='light'] {
+  /* Background layers — clean clinical whites */
+  --bg-base:        #f0f4ff;
+  --bg-secondary:   #e8eef8;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #f8faff;
+  --bg-glass:       rgba(255, 255, 255, 0.80);
+  --bg-glass-light: rgba(0, 0, 0, 0.03);
+
+  /* Borders */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-medium: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.20);
+  --border-focus:  rgba(0, 112, 204, 0.60);
+
+  /* Text — rich dark for high contrast */
+  --text-primary:   #0f172a;
+  --text-secondary: #3d5a8a;
+  --text-muted:     #7a92b5;
+  --text-disabled:  #b8c8df;
+  --text-inverse:   #ffffff;
+
+  /* Brand accents — slightly deeper for light bg legibility */
+  --cyan:    #0088cc;
+  --indigo:  #4f46e5;
+  --amber:   #d97706;
+  --rose:    #e11d48;
+  --emerald: #059669;
+  --red:     #dc2626;
+  --orange:  #ea6c1c;
+
+  /* Glow — softer for light theme */
+  --glow-cyan:    0 0 20px rgba(0, 136, 204, 0.20);
+  --glow-indigo:  0 0 20px rgba(79, 70, 229, 0.20);
+  --glow-amber:   0 0 20px rgba(217, 119, 6,  0.20);
+  --glow-rose:    0 0 20px rgba(225, 29, 72,  0.20);
+  --glow-emerald: 0 0 20px rgba(5, 150, 105,  0.20);
+
+  /* Shadows — crisper, lighter for day mode */
+  --shadow-xs: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.10);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.12);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.14);
+  --shadow-xl: 0 16px 64px rgba(0,0,0,0.18);
+
+  /* Gradients — bright and clinical */
+  --gradient-brand:   linear-gradient(135deg, #e8eef8 0%, #f0f4ff 100%);
+  --gradient-cyan:    linear-gradient(135deg, #0088cc 0%, #0060aa 100%);
+  --gradient-indigo:  linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  --gradient-amber:   linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  --gradient-rose:    linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  --gradient-emerald: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-mesh:    radial-gradient(ellipse at 20% 50%, rgba(0, 136, 204, 0.06) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 20%, rgba(79, 70, 229, 0.06) 0%, transparent 50%),
+                      radial-gradient(ellipse at 50% 80%, rgba(5, 150, 105, 0.04) 0%, transparent 50%);
+}
+
+/* ─── Smooth theme transition on all elements ────────────────────────────────── */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease, box-shadow 0.3s ease;
+}
+
+
 /* ─── Reset ──────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -108,6 +172,75 @@ img, svg { display: block; max-width: 100%; }
 button { cursor: pointer; font-family: var(--font); }
 a { color: inherit; text-decoration: none; }
 input, textarea, select { font-family: var(--font); }
+
+/* ─── Theme Toggle Button ────────────────────────────────────────────────────── */
+.theme-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.theme-toggle__track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 68px;
+  height: 34px;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-medium);
+  border-radius: var(--r-full);
+  padding: 4px;
+  transition: background 0.3s ease, border-color 0.3s ease;
+  overflow: hidden;
+}
+
+.theme-toggle__icon {
+  position: absolute;
+  font-size: 16px;
+  line-height: 1;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  user-select: none;
+}
+
+.theme-toggle__icon--sun  { left: 7px;  }
+.theme-toggle__icon--moon { right: 7px; }
+
+/* In dark mode: moon is visible, sun fades out */
+[data-theme='dark']  .theme-toggle__icon--sun  { opacity: 0.25; transform: scale(0.8); }
+[data-theme='dark']  .theme-toggle__icon--moon { opacity: 1;    transform: scale(1); }
+/* In light mode: sun is visible, moon fades out */
+[data-theme='light'] .theme-toggle__icon--sun  { opacity: 1;    transform: scale(1); }
+[data-theme='light'] .theme-toggle__icon--moon { opacity: 0.25; transform: scale(0.8); }
+
+.theme-toggle__thumb {
+  position: absolute;
+  top: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--gradient-cyan);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  left: 4px;
+}
+
+/* Thumb slides right in dark mode */
+[data-theme='dark'] .theme-toggle__thumb {
+  transform: translateX(34px);
+}
+
+[data-theme='light'] .theme-toggle__track {
+  background: #e0ecff;
+  border-color: #c2d5f0;
+}
+
+.theme-toggle:hover .theme-toggle__track {
+  border-color: var(--border-strong);
+}
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

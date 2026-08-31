@@ -40,8 +40,13 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Only handle 401s that haven't already been retried
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    // ── Never retry auth endpoints — their 401s are real credential errors ──
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login')
+      || originalRequest?.url?.includes('/auth/register')
+      || originalRequest?.url?.includes('/auth/refresh');
+
+    // Only handle 401s that haven't already been retried, and are not auth endpoints
+    if (error.response?.status !== 401 || originalRequest._retry || isAuthEndpoint) {
       return Promise.reject(error);
     }
 

@@ -1,0 +1,104 @@
+name: Healthcare Platform CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  # ─── Server Tests ────────────────────────────────────────────────────────────
+  server-tests:
+    name: Server Tests (Node.js ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    env:
+      NODE_ENV: test
+      PORT: 5000
+      JWT_SECRET: ci_test_jwt_secret_at_least_32_chars_long
+      JWT_REFRESH_SECRET: ci_test_refresh_secret_at_least_32_chars
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CLIENT_ORIGIN: http://localhost:5173
+      # Use the Atlas URI from repository secrets for real DB tests
+      # If the secret is not set, tests that don't need DB will still pass
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm install
+
+      - name: Run server tests
+        working-directory: ./server
+        run: npm test
+
+  # ─── Client Tests ────────────────────────────────────────────────────────────
+  client-tests:
+    name: Client Tests (Node.js ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    env:
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: ./client
+        run: npm install
+
+      - name: Run client tests
+        working-directory: ./client
+        run: npm test
+
+  # ─── Build Check ─────────────────────────────────────────────────────────────
+  client-build:
+    name: Client Build Check
+    runs-on: ubuntu-latest
+    needs: client-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: ./client
+        run: npm install
+
+      - name: Build client for production
+        working-directory: ./client
+        run: npm run build

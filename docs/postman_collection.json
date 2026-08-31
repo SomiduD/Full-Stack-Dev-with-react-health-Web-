@@ -1,0 +1,271 @@
+{
+  "info": {
+    "_postman_id": "healthcare-platform-api",
+    "name": "Healthcare Platform API",
+    "description": "Full REST API collection for the Healthcare Web Platform. Import this file into Postman to test all endpoints.\n\n## Setup\n1. Set the `base_url` variable to `http://localhost:5000`\n2. Register/login to get an `access_token` — this is auto-saved by the login request script.\n3. All protected routes use Bearer token auth automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",     "value": "http://localhost:5000", "type": "string" },
+    { "key": "access_token", "value": "",                      "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/health",
+            "description": "Verifies the API server is running. No auth required."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/register",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patient@example.com\",\n  \"password\": \"SecurePass@123\",\n  \"role\": \"patient\",\n  \"hospitalCode\": \"DEMO01\",\n  \"profile\": {\n    \"firstName\": \"Jane\",\n    \"lastName\": \"Doe\",\n    \"phone\": \"+1234567890\",\n    \"bloodGroup\": \"O+\"\n  }\n}"
+            },
+            "description": "Register a new user. hospitalCode must match an existing hospital."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('access_token', json.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patient@example.com\",\n  \"password\": \"SecurePass@123\"\n}"
+            },
+            "description": "Login and receive JWT access + refresh tokens. The access token is auto-saved to the collection variable."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/refresh",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"<your_refresh_token_here>\"\n}"
+            },
+            "description": "Exchange a refresh token for a new access token."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/auth/me",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Returns the currently authenticated user's profile. Requires Bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/logout",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/logout",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Invalidates the current session. Requires Bearer token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "POST /api/appointments (Book)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/appointments",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"<doctor_user_id>\",\n  \"date\": \"2026-09-15\",\n  \"timeSlot\": \"09:00\",\n  \"reason\": \"Annual checkup\"\n}"
+            },
+            "description": "Patient books a new appointment. Requires patient role token."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/appointments/my",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/appointments/my?upcoming=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "my"],
+              "query": [
+                { "key": "upcoming", "value": "true",      "description": "Filter to future appointments only" },
+                { "key": "status",   "value": "pending",   "description": "Filter by status", "disabled": true }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Returns the authenticated patient's own appointments."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /api/appointments/:id/status",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/appointments/<appointment_id>/status",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\",\n  \"version\": 0,\n  \"doctorNotes\": \"Patient confirmed for consultation.\"\n}"
+            },
+            "description": "Doctor or patient updates appointment status. Send `version` (the `__v` field) from your last fetch to enable conflict detection — a 409 is returned if another user edited the record in the meantime."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/appointments/doctor/queue",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/appointments/doctor/queue?date=2026-09-15",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "doctor", "queue"],
+              "query": [{ "key": "date", "value": "2026-09-15" }]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Returns today's patient queue for the authenticated doctor."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/appointments/doctor/schedule",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/appointments/doctor/schedule",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Returns the doctor's full upcoming appointment schedule."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/appointments/slots",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/appointments/slots?doctorId=<doctor_id>&date=2026-09-15",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "slots"],
+              "query": [
+                { "key": "doctorId", "value": "<doctor_id>" },
+                { "key": "date",     "value": "2026-09-15" }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Returns available and booked time slots for a doctor on a given date."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health Records",
+      "item": [
+        {
+          "name": "GET /api/health-records",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/health-records",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Patient: returns own records. Doctor: returns records for patients in their hospital."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/health-records",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/health-records",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"<patient_user_id>\",\n  \"type\": \"lab\",\n  \"title\": \"Blood CBC Report\",\n  \"description\": \"Complete blood count — all values within normal range.\",\n  \"fileUrl\": \"https://example.com/reports/cbc.pdf\",\n  \"date\": \"2026-09-10\"\n}"
+            },
+            "description": "Doctor creates a new health record for a patient. Requires doctor role token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Doctors",
+      "item": [
+        {
+          "name": "GET /api/doctors",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/doctors",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Lists all active doctors in the authenticated user's hospital."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "GET /api/admin/stats",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/admin/stats",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Returns hospital dashboard statistics. Requires hospital_admin or super_admin role."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

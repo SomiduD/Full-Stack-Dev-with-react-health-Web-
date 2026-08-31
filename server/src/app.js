@@ -7,10 +7,12 @@ const cors        = require('cors');
 const helmet      = require('helmet');
 const { Server }  = require('socket.io');
 const connectDB          = require('./config/db');
+const { isDBConnected }  = require('./config/db');
 const authRoutes         = require('./routes/authRoutes');
 const appointmentRoutes  = require('./routes/appointmentRoutes');
 const healthRecordRoutes = require('./routes/healthRecordRoutes');
 const doctorRoutes       = require('./routes/doctorRoutes');
+const adminRoutes        = require('./routes/adminRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 // ─── Database ─────────────────────────────────────────────────────────────────
@@ -104,6 +106,7 @@ app.get('/api/health', (_req, res) =>
     timestamp:   new Date().toISOString(),
     environment: process.env.NODE_ENV,
     version:     '1.0.0',
+    database:    isDBConnected() ? 'connected' : 'disconnected',
   })
 );
 
@@ -112,8 +115,7 @@ app.use('/api/auth',           authRoutes);
 app.use('/api/appointments',   appointmentRoutes);
 app.use('/api/health-records', healthRecordRoutes);
 app.use('/api/doctors',        doctorRoutes);
-// Phase 3+: app.use('/api/triage',    triageRoutes);
-// Phase 4+: app.use('/api/hospitals', hospitalRoutes);
+app.use('/api/admin',          adminRoutes);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);
@@ -122,13 +124,15 @@ app.use(errorHandler);
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT, 10) || 5000;
 
-server.listen(PORT, () => {
-  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`🚀  Server running in ${process.env.NODE_ENV || 'development'} mode`);
-  console.log(`🌐  REST API  : http://localhost:${PORT}/api/health`);
-  console.log(`🔌  Socket.io : ws://localhost:${PORT}`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-});
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, () => {
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`🚀  Server running in ${process.env.NODE_ENV || 'development'} mode`);
+    console.log(`🌐  REST API  : http://localhost:${PORT}/api/health`);
+    console.log(`🔌  Socket.io : ws://localhost:${PORT}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  });
+}
 
 // ─── Graceful Shutdown ────────────────────────────────────────────────────────
 const shutdown = (signal) => {

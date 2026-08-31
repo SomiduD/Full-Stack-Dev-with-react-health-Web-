@@ -482,7 +482,7 @@ const RegisterPage = () => {
                     cursor:'pointer', background:selectedRole
                       ? `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}cc)`
                       : 'var(--gradient-cyan)',
-                    color:'var(--bg-base)', fontSize:'0.95rem',
+                    color:'#ffffff', fontSize:'0.95rem',
                     display:'flex', alignItems:'center', gap:8,
                   }}
                 >
@@ -499,7 +499,8 @@ const RegisterPage = () => {
                     background: isSubmitting ? 'var(--bg-elevated)' : selectedRole
                       ? `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}cc)`
                       : 'var(--gradient-cyan)',
-                    color: isSubmitting ? 'var(--text-muted)' : 'var(--bg-base)',
+                    color: isSubmitting ? 'var(--text-muted)' : '#ffffff',
+                    opacity: isSubmitting ? 0.7 : 1,
                     fontSize:'0.95rem', display:'flex', alignItems:'center', gap:8,
                   }}
                 >
