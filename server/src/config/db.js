@@ -1,3 +1,9 @@
+if (typeof globalThis.crypto === 'undefined') {
+  try {
+    const nodeCrypto = require('crypto');
+    globalThis.crypto = nodeCrypto.webcrypto || nodeCrypto;
+  } catch (e) {}
+}
 const mongoose = require('mongoose');
 
 let retryCount = 0;

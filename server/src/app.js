@@ -1,6 +1,13 @@
 // server/src/app.js
 require('dotenv').config();
 
+if (typeof globalThis.crypto === 'undefined') {
+  try {
+    const nodeCrypto = require('crypto');
+    globalThis.crypto = nodeCrypto.webcrypto || nodeCrypto;
+  } catch (e) {}
+}
+
 const http        = require('http');
 const express     = require('express');
 const cors        = require('cors');
