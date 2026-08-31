@@ -1,7 +1,7 @@
 // server/src/controllers/adminController.js
 const { User, ROLES } = require('../models/User');
-const Appointment     = require('../models/Appointment');
-const HealthRecord    = require('../models/HealthRecord');
+const { Appointment } = require('../models/Appointment');
+const { HealthRecord } = require('../models/HealthRecord');
 const Hospital        = require('../models/Hospital');
 const bcrypt          = require('bcryptjs');
 const { validationResult } = require('express-validator');
@@ -17,12 +17,30 @@ const handleValidation = (req, res) => {
 };
 
 /**
+ * Resolve the hospitalId for a request.
+ * - hospital_admin  → always req.user.hospitalId
+ * - super_admin     → req.user.hospitalId if set, else first active hospital
+ */
+async function resolveHospitalId(req) {
+  if (req.user.hospitalId) return req.user.hospitalId;
+  // super_admin without a hospital assignment → use the first active hospital
+  const first = await Hospital.findOne({ isActive: true }).select('_id').lean();
+  return first?._id?.toString() || null;
+}
+
+/**
  * GET /api/admin/stats
- * Hospital-wide real-time stats from the database.
  */
 exports.getStats = async (req, res, next) => {
   try {
-    const hospitalId = req.user.hospitalId;
+    const hospitalId = await resolveHospitalId(req);
+
+    if (!hospitalId) {
+      return res.status(404).json({ success: false, message: 'No hospital found.' });
+    }
+
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+    const today1 = new Date(); today1.setHours(23, 59, 59, 999);
 
     const [
       totalDoctors,
@@ -36,18 +54,12 @@ exports.getStats = async (req, res, next) => {
     ] = await Promise.all([
       User.countDocuments({ hospitalId, role: ROLES.DOCTOR, isActive: true }),
       User.countDocuments({ hospitalId, role: ROLES.PATIENT, isActive: true }),
-      Appointment.countDocuments({
-        hospitalId,
-        date: {
-          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          $lte: new Date(new Date().setHours(23, 59, 59, 999)),
-        },
-      }),
+      Appointment.countDocuments({ hospitalId, date: { $gte: today0, $lte: today1 } }),
       Appointment.countDocuments({ hospitalId, status: 'pending' }),
       Appointment.countDocuments({ hospitalId, status: 'confirmed' }),
       Appointment.countDocuments({ hospitalId, status: 'completed' }),
       HealthRecord.countDocuments({ hospitalId, isDeleted: { $ne: true } }),
-      Hospital.findById(hospitalId).select('name code settings').lean(),
+      Hospital.findById(hospitalId).select('name code address settings').lean(),
     ]);
 
     return res.status(200).json({
@@ -61,9 +73,9 @@ exports.getStats = async (req, res, next) => {
         completedAppts,
         totalRecords,
         hospital,
-        bedsICU:      hospital?.settings?.maxBedsICU      || 0,
-        bedsGeneral:  hospital?.settings?.maxBedsGeneral  || 0,
-        bedsEmergency:hospital?.settings?.maxBedsEmergency|| 0,
+        bedsICU:       hospital?.settings?.maxBedsICU       || 0,
+        bedsGeneral:   hospital?.settings?.maxBedsGeneral   || 0,
+        bedsEmergency: hospital?.settings?.maxBedsEmergency || 0,
       },
     });
   } catch (err) {
@@ -73,12 +85,12 @@ exports.getStats = async (req, res, next) => {
 
 /**
  * GET /api/admin/doctors
- * All doctors in the admin's hospital.
  */
 exports.getDoctors = async (req, res, next) => {
   try {
+    const hospitalId = await resolveHospitalId(req);
     const { isActive } = req.query;
-    const filter = { hospitalId: req.user.hospitalId, role: ROLES.DOCTOR };
+    const filter = { hospitalId, role: ROLES.DOCTOR };
     if (isActive !== undefined) filter.isActive = isActive === 'true';
 
     const doctors = await User.find(filter)
@@ -94,13 +106,12 @@ exports.getDoctors = async (req, res, next) => {
 
 /**
  * POST /api/admin/doctors
- * Create a new doctor account in the hospital.
  */
 exports.createDoctor = async (req, res, next) => {
   if (handleValidation(req, res)) return;
   try {
     const { email, password, profile } = req.body;
-    const hospitalId = req.user.hospitalId;
+    const hospitalId = await resolveHospitalId(req);
 
     const exists = await User.findOne({ email });
     if (exists) {
@@ -117,18 +128,17 @@ exports.createDoctor = async (req, res, next) => {
       hospitalId,
       isActive: true,
       profile: {
-        firstName:      profile.firstName,
-        lastName:       profile.lastName,
-        gender:         profile.gender || 'prefer_not_to_say',
-        specialization: profile.specialization,
-        department:     profile.department,
-        licenseNumber:  profile.licenseNumber,
-        yearsExperience:profile.yearsExperience || 0,
-        phone:          profile.phone,
+        firstName:       profile.firstName,
+        lastName:        profile.lastName,
+        gender:          profile.gender || 'prefer_not_to_say',
+        specialization:  profile.specialization,
+        department:      profile.department,
+        licenseNumber:   profile.licenseNumber,
+        yearsExperience: profile.yearsExperience || 0,
+        phone:           profile.phone,
       },
     });
 
-    // Emit to admin room so all admin tabs update live
     const io = req.app.get('io');
     if (io) io.to(`hospital:${hospitalId}`).emit('doctor:new', { _id: doctor._id });
 
@@ -144,13 +154,13 @@ exports.createDoctor = async (req, res, next) => {
 
 /**
  * PATCH /api/admin/doctors/:id/status
- * Activate / deactivate a doctor.
  */
 exports.updateDoctorStatus = async (req, res, next) => {
   try {
+    const hospitalId = await resolveHospitalId(req);
     const { isActive } = req.body;
     const doctor = await User.findOneAndUpdate(
-      { _id: req.params.id, hospitalId: req.user.hospitalId, role: ROLES.DOCTOR },
+      { _id: req.params.id, hospitalId, role: ROLES.DOCTOR },
       { isActive },
       { new: true }
     ).select('-passwordHash -refreshTokens');
@@ -166,18 +176,18 @@ exports.updateDoctorStatus = async (req, res, next) => {
 
 /**
  * GET /api/admin/appointments
- * All appointments in the hospital with optional filters.
  */
 exports.getAppointments = async (req, res, next) => {
   try {
+    const hospitalId = await resolveHospitalId(req);
     const { status, doctorId, date, page = 1, limit = 20 } = req.query;
-    const filter = { hospitalId: req.user.hospitalId };
+    const filter = { hospitalId };
     if (status)   filter.status   = status;
     if (doctorId) filter.doctorId = doctorId;
     if (date) {
       const d = new Date(date);
       filter.date = {
-        $gte: new Date(d.setHours(0, 0, 0, 0)),
+        $gte: new Date(d.setHours(0,  0,  0,   0)),
         $lte: new Date(d.setHours(23, 59, 59, 999)),
       };
     }
@@ -204,12 +214,12 @@ exports.getAppointments = async (req, res, next) => {
 
 /**
  * GET /api/admin/patients
- * All patients in the hospital.
  */
 exports.getPatients = async (req, res, next) => {
   try {
+    const hospitalId = await resolveHospitalId(req);
     const { search } = req.query;
-    const filter = { hospitalId: req.user.hospitalId, role: ROLES.PATIENT, isActive: true };
+    const filter = { hospitalId, role: ROLES.PATIENT, isActive: true };
 
     if (search) {
       filter.$or = [
@@ -232,11 +242,11 @@ exports.getPatients = async (req, res, next) => {
 
 /**
  * GET /api/admin/hospital
- * Get hospital profile.
  */
 exports.getHospital = async (req, res, next) => {
   try {
-    const hospital = await Hospital.findById(req.user.hospitalId).lean();
+    const hospitalId = await resolveHospitalId(req);
+    const hospital = await Hospital.findById(hospitalId).lean();
     if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found.' });
     return res.status(200).json({ success: true, data: hospital });
   } catch (err) {

@@ -13,6 +13,7 @@ const appointmentRoutes  = require('./routes/appointmentRoutes');
 const healthRecordRoutes = require('./routes/healthRecordRoutes');
 const doctorRoutes       = require('./routes/doctorRoutes');
 const adminRoutes        = require('./routes/adminRoutes');
+const superAdminRoutes   = require('./routes/superAdminRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 // ─── Database ─────────────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ app.use('/api/appointments',   appointmentRoutes);
 app.use('/api/health-records', healthRecordRoutes);
 app.use('/api/doctors',        doctorRoutes);
 app.use('/api/admin',          adminRoutes);
+app.use('/api/superadmin',     superAdminRoutes);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);
