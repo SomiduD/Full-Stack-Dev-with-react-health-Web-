@@ -338,13 +338,13 @@ const RegisterPage = () => {
                     <div className="form-group">
                       <label htmlFor="reg-first" className="form-label">First Name *</label>
                       <input id="reg-first" type="text" className={`form-input${fieldErrors.firstName ? ' error' : ''}`}
-                        placeholder="Rahul" value={form.firstName} onChange={(e) => update('firstName', e.target.value)} />
+                        placeholder="Kamal" value={form.firstName} onChange={(e) => update('firstName', e.target.value)} />
                       {fieldErrors.firstName && <span className="form-error">{fieldErrors.firstName}</span>}
                     </div>
                     <div className="form-group">
                       <label htmlFor="reg-last" className="form-label">Last Name *</label>
                       <input id="reg-last" type="text" className={`form-input${fieldErrors.lastName ? ' error' : ''}`}
-                        placeholder="Sharma" value={form.lastName} onChange={(e) => update('lastName', e.target.value)} />
+                        placeholder="Perera" value={form.lastName} onChange={(e) => update('lastName', e.target.value)} />
                       {fieldErrors.lastName && <span className="form-error">{fieldErrors.lastName}</span>}
                     </div>
                   </div>
@@ -372,7 +372,7 @@ const RegisterPage = () => {
                     <div className="form-group">
                       <label htmlFor="reg-phone" className="form-label">Phone</label>
                       <input id="reg-phone" type="tel" className="form-input"
-                        placeholder="+91 9876543210" value={form.phone} onChange={(e) => update('phone', e.target.value)} />
+                        placeholder="+94 71 234 5678" value={form.phone} onChange={(e) => update('phone', e.target.value)} />
                     </div>
                   </div>
 
@@ -413,7 +413,8 @@ const RegisterPage = () => {
               <div className="animate-fade-in-up">
                 <h3 style={{ marginBottom: 6, color: 'var(--text-primary)' }}>Hospital Code</h3>
                 <p style={{ fontSize: '0.85rem', marginBottom: 'var(--sp-5)' }}>
-                  Enter the unique code for your hospital. Ask your hospital administrator if you don't have it.
+                  Enter the unique code for your hospital. Contact your hospital administrator if you don't have it.
+                  <br/><span style={{ color:'var(--cyan)', fontWeight:600 }}>Nawaloka General Hospital code: <strong>NWL01</strong></span>
                 </p>
 
                 <div className="form-group" style={{ marginBottom: 'var(--sp-4)' }}>
@@ -422,7 +423,7 @@ const RegisterPage = () => {
                     id="reg-hospital-code"
                     type="text"
                     className={`form-input${fieldErrors.hospitalCode ? ' error' : ''}`}
-                    placeholder="e.g. AIIMS_DEL or APOLLO_MUM"
+                    placeholder="e.g. NWL01"
                     value={form.hospitalCode}
                     onChange={(e) => update('hospitalCode', e.target.value.toUpperCase())}
                     style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}
