@@ -5,13 +5,14 @@ import { getSuperStats, getAllHospitals, toggleHospital } from '../../services/s
 import { getDoctors, getPatients, getAdminAppointments } from '../../services/adminService';
 
 const NAV_ITEMS = [
-  { id: 'overview',     label: 'System Overview',  icon: '🌐' },
-  { id: 'hospitals',    label: 'Hospitals',         icon: '🏥' },
-  { id: 'doctors',      label: 'All Doctors',       icon: '🩺' },
-  { id: 'patients',     label: 'All Patients',      icon: '🧑' },
-  { id: 'appointments', label: 'All Appointments',  icon: '📅' },
-  { id: 'compliance',   label: 'Compliance',        icon: '📋' },
-  { id: 'audit',        label: 'Audit Logs',        icon: '🔍' },
+  { id: 'overview',       label: 'System Overview',   icon: '🌐' },
+  { id: 'verifications',  label: 'Verifications',     icon: '🔐' },
+  { id: 'hospitals',      label: 'Hospitals',          icon: '🏥' },
+  { id: 'doctors',        label: 'All Doctors',        icon: '🩺' },
+  { id: 'patients',       label: 'All Patients',       icon: '🧑' },
+  { id: 'appointments',   label: 'All Appointments',   icon: '📅' },
+  { id: 'compliance',     label: 'Compliance',         icon: '📋' },
+  { id: 'audit',          label: 'Audit Logs',         icon: '🔍' },
 ];
 
 const SC = {
@@ -20,6 +21,186 @@ const SC = {
   completed: { text:'var(--indigo)', bg:'rgba(129,140,248,0.1)', border:'rgba(129,140,248,0.3)' },
   cancelled: { text:'var(--rose)',   bg:'rgba(251,113,133,0.1)', border:'rgba(251,113,133,0.3)' },
 };
+
+import api from '../../services/api';
+
+// ─────────────────────────────── VERIFICATIONS ───────────────────────────────────
+function VerificationsSection() {
+  const [filterStatus, setFilterStatus] = useState('pending');
+  const [users,        setUsers]        = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState('');
+  const [actionLoading, setActionLoading] = useState('');
+  const [rejectModal,  setRejectModal]  = useState(null); // userId
+  const [rejectReason, setRejectReason] = useState('');
+
+  const load = async (status = filterStatus) => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/superadmin/verifications?status=${status}`);
+      setUsers(res.data?.data || []);
+    } catch(e) {
+      setError(e.response?.data?.message || 'Failed to load verifications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(filterStatus); }, [filterStatus]);
+
+  const handleApprove = async (userId) => {
+    setActionLoading(userId + '_approve');
+    try {
+      await api.patch(`/superadmin/verifications/${userId}/approve`);
+      setUsers((u) => u.filter((x) => x._id !== userId));
+    } catch(e) {
+      alert(e.response?.data?.message || 'Failed to approve');
+    } finally { setActionLoading(''); }
+  };
+
+  const handleReject = async () => {
+    if (!rejectModal) return;
+    setActionLoading(rejectModal + '_reject');
+    try {
+      await api.patch(`/superadmin/verifications/${rejectModal}/reject`, { reason: rejectReason || 'Identity could not be verified.' });
+      setUsers((u) => u.filter((x) => x._id !== rejectModal));
+      setRejectModal(null);
+      setRejectReason('');
+    } catch(e) {
+      alert(e.response?.data?.message || 'Failed to reject');
+    } finally { setActionLoading(''); }
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 'var(--sp-6)' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+          🔐 Identity Verifications
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+          Review and approve/reject doctor registration requests.
+        </p>
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)' }}>
+        {['pending', 'approved', 'rejected'].map((s) => (
+          <button key={s} type="button"
+            onClick={() => setFilterStatus(s)}
+            style={{
+              padding: '7px 18px', borderRadius: 'var(--r-full)', border: '1px solid',
+              borderColor: filterStatus === s
+                ? (s === 'pending' ? 'var(--amber)' : s === 'approved' ? 'var(--emerald)' : 'var(--rose)')
+                : 'var(--border-subtle)',
+              background: filterStatus === s
+                ? (s === 'pending' ? 'rgba(251,191,36,0.12)' : s === 'approved' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)')
+                : 'none',
+              color: filterStatus === s
+                ? (s === 'pending' ? 'var(--amber)' : s === 'approved' ? 'var(--emerald)' : 'var(--rose)')
+                : 'var(--text-muted)',
+              fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer',
+              textTransform: 'capitalize',
+            }}
+          >{s} {filterStatus === s && `(${users.length})`}</button>
+        ))}
+      </div>
+
+      {loading && <div style={{ textAlign: 'center', padding: 'var(--sp-12)' }}><span className="spinner spinner-lg"/></div>}
+      {error   && <div className="alert alert-error">⚠️ {error}</div>}
+
+      {!loading && users.length === 0 && (
+        <div className="glass-card" style={{ padding: 'var(--sp-10)', textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: 'var(--sp-3)' }}>✅</div>
+          <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>No {filterStatus} verifications</div>
+          <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>{filterStatus === 'pending' ? 'No doctors are waiting for approval right now.' : `No ${filterStatus} records found.`}</div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+        {users.map((u) => (
+          <div key={u._id} className="glass-card" style={{ padding: 'var(--sp-5)', borderLeft: filterStatus === 'pending' ? '3px solid var(--amber)' : filterStatus === 'approved' ? '3px solid var(--emerald)' : '3px solid var(--rose)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-4)', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: 4 }}>
+                  {u.profile?.firstName} {u.profile?.lastName}
+                  <span style={{ marginLeft: 8, fontSize: '0.75rem', background: 'rgba(0,212,255,0.12)', color: 'var(--cyan)', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>
+                    {u.role}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.7 }}>
+                  <div>📧 {u.email}</div>
+                  <div>🏥 {u.hospitalId?.name || 'Unknown Hospital'} ({u.hospitalId?.code})</div>
+                  {u.identityDocument?.nmcLicense && <div>🆔 NMC: <strong style={{ color: 'var(--text-secondary)' }}>{u.identityDocument.nmcLicense}</strong></div>}
+                  {u.identityDocument?.nicNumber  && <div>🇮🇩 NIC: <strong style={{ color: 'var(--text-secondary)' }}>{u.identityDocument.nicNumber}</strong></div>}
+                  <div>🗓️ Registered: {new Date(u.createdAt).toLocaleDateString('en-LK', { year:'numeric', month:'long', day:'numeric' })}</div>
+                  {u.verificationNote && <div style={{ color: 'var(--rose)', marginTop: 4 }}>📝 Note: {u.verificationNote}</div>}
+                </div>
+              </div>
+
+              {filterStatus === 'pending' && (
+                <div style={{ display: 'flex', gap: 'var(--sp-2)', flexShrink: 0 }}>
+                  <button
+                    id={`btn-approve-${u._id.slice(-4)}`}
+                    type="button"
+                    disabled={actionLoading === u._id + '_approve'}
+                    onClick={() => handleApprove(u._id)}
+                    style={{
+                      padding: '8px 18px', borderRadius: 'var(--r-md)', border: '1px solid rgba(16,185,129,0.4)',
+                      background: 'rgba(16,185,129,0.12)', color: 'var(--emerald)',
+                      fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      opacity: actionLoading ? 0.6 : 1,
+                    }}
+                  >
+                    {actionLoading === u._id + '_approve' ? <span className="spinner" /> : '✅'} Approve
+                  </button>
+                  <button
+                    id={`btn-reject-${u._id.slice(-4)}`}
+                    type="button"
+                    disabled={!!actionLoading}
+                    onClick={() => { setRejectModal(u._id); setRejectReason(''); }}
+                    style={{
+                      padding: '8px 18px', borderRadius: 'var(--r-md)', border: '1px solid rgba(239,68,68,0.4)',
+                      background: 'rgba(239,68,68,0.1)', color: 'var(--rose)',
+                      fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
+                    }}
+                  >
+                    ❌ Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Reject Modal */}
+      {rejectModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div className="glass-card" style={{ padding:'var(--sp-6)', maxWidth:420, width:'100%' }}>
+            <h3 style={{ color:'var(--text-primary)', marginBottom:'var(--sp-4)' }}>❌ Reject Verification</h3>
+            <div className="form-group" style={{ marginBottom:'var(--sp-4)' }}>
+              <label className="form-label">Reason for rejection (optional)</label>
+              <textarea className="form-input" rows={3} value={rejectReason}
+                placeholder="e.g. NMC license number not found in SLMC registry..."
+                onChange={(e) => setRejectReason(e.target.value)}
+                style={{ resize:'vertical' }}
+              />
+            </div>
+            <div style={{ display:'flex', gap:'var(--sp-3)' }}>
+              <button type="button" onClick={() => setRejectModal(null)} className="btn btn-ghost" style={{ flex:1 }}>Cancel</button>
+              <button type="button" id="btn-confirm-reject" onClick={handleReject}
+                style={{ flex:2, padding:'12px', border:'none', borderRadius:'var(--r-lg)', background:'linear-gradient(135deg,#ef4444,#dc2626)', color:'#fff', fontWeight:700, cursor:'pointer' }}
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─────────────────────────────── OVERVIEW ──────────────────────────────────────
 function OverviewSection({ user }) {
@@ -491,14 +672,15 @@ const SuperAdminDashboard = () => {
 
   const renderSection = () => {
     switch(active) {
-      case 'overview':     return <OverviewSection user={user} />;
-      case 'hospitals':    return <HospitalsSection />;
-      case 'doctors':      return <DoctorsSection />;
-      case 'patients':     return <PatientsSection />;
-      case 'appointments': return <AppointmentsSection />;
-      case 'compliance':   return <ComplianceSection />;
-      case 'audit':        return <AuditSection />;
-      default:             return <OverviewSection user={user} />;
+      case 'overview':       return <OverviewSection user={user} />;
+      case 'verifications':  return <VerificationsSection />;
+      case 'hospitals':      return <HospitalsSection />;
+      case 'doctors':        return <DoctorsSection />;
+      case 'patients':       return <PatientsSection />;
+      case 'appointments':   return <AppointmentsSection />;
+      case 'compliance':     return <ComplianceSection />;
+      case 'audit':          return <AuditSection />;
+      default:               return <OverviewSection user={user} />;
     }
   };
 

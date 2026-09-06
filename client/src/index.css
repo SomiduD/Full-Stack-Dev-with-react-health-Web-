@@ -479,3 +479,130 @@ p  { line-height: 1.65; color: var(--text-secondary); }
 .dot-online  { width:8px; height:8px; border-radius:50%; background:var(--emerald); }
 .dot-offline { width:8px; height:8px; border-radius:50%; background:var(--red);     }
 .dot-ping { animation: ping 1s cubic-bezier(0,0,0.2,1) infinite; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE DESIGN — Mobile First Breakpoints
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Tablet (≤ 1024px) ─────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  /* Stat grids: 2 columns on tablet */
+  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Reduce main padding */
+  .dashboard-main { padding: var(--sp-6) !important; }
+}
+
+/* ─── Mobile (≤ 768px) ──────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* ── Auth pages ── */
+  .auth-card {
+    width: calc(100vw - 32px) !important;
+    min-width: unset !important;
+    padding: var(--sp-6) var(--sp-5) !important;
+    margin: var(--sp-4) auto !important;
+  }
+
+  /* ── Stat grids: 1 column on phone ── */
+  .stat-grid { grid-template-columns: 1fr !important; }
+
+  /* ── Table responsiveness ── */
+  .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  table { min-width: 540px; }
+
+  /* ── Glass cards: full width ── */
+  .glass-card { width: 100%; box-sizing: border-box; }
+
+  /* ── Flex rows stack on mobile ── */
+  .mobile-stack {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* ── Forms ── */
+  .form-row { flex-direction: column !important; }
+  .form-input { font-size: 16px !important; } /* Prevents iOS zoom on input focus */
+
+  /* ── Buttons ── */
+  .btn { width: 100%; justify-content: center; }
+
+  /* ── Ambulance tab hotline grid ── */
+  .ambulance-hotlines { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* ── Chatbot panel ── */
+  #chatbot-panel {
+    bottom: 80px !important;
+    right: 8px !important;
+    left: 8px !important;
+    width: auto !important;
+  }
+
+  /* ── Chatbot button ── */
+  #chatbot-toggle { bottom: 16px !important; right: 16px !important; }
+
+  /* ── Map tab cards ── */
+  .hospital-card-grid { grid-template-columns: 1fr !important; }
+
+  /* ── Dashboard main area ── */
+  .dashboard-main { padding: var(--sp-4) !important; min-height: unset !important; }
+
+  /* ── Headers ── */
+  h2 { font-size: 1.25rem !important; }
+  h3 { font-size: 1.05rem !important; }
+
+  /* ── Modal: full screen on phone ── */
+  .modal-card {
+    position: fixed !important;
+    inset: 0 !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    max-height: 100svh !important;
+    overflow-y: auto;
+  }
+}
+
+/* ─── Extra Small (≤ 480px) ─────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Single column everything */
+  .ambulance-hotlines { grid-template-columns: 1fr !important; }
+  .badge { font-size: 0.65rem !important; }
+
+  /* Register form steps indicator: hide labels, show only icons */
+  .step-label { display: none; }
+}
+
+/* ─── Animation utilities ────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.08); }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+/* Leaflet map z-index fix (prevents UI overlapping map controls) */
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-popup-pane,
+.leaflet-map-pane canvas,
+.leaflet-map-pane svg {
+  z-index: 1 !important;
+}
+.leaflet-control { z-index: 2 !important; }
+.leaflet-top, .leaflet-bottom { z-index: 2 !important; }

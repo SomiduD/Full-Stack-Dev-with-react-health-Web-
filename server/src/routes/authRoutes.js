@@ -17,7 +17,7 @@ const router = express.Router();
 const registerRules = [
   body('email')
     .isEmail().withMessage('Must be a valid email address.')
-    .normalizeEmail(),
+    .normalizeEmail({ gmail_remove_dots: false }),
   body('password')
     .isLength({ min: 8 }).withMessage('Password must be at least 8 characters.')
     .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter.')
@@ -41,7 +41,7 @@ const registerRules = [
 const loginRules = [
   body('email')
     .isEmail().withMessage('Must be a valid email address.')
-    .normalizeEmail(),
+    .normalizeEmail({ gmail_remove_dots: false }),
   body('password')
     .notEmpty().withMessage('Password is required.'),
 ];

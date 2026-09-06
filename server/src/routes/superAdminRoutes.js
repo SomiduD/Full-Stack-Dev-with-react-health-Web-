@@ -89,4 +89,53 @@ router.patch('/hospitals/:id/status', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/**
+ * GET /api/superadmin/verifications
+ * List users pending/approved/rejected verification (doctors mainly).
+ */
+router.get('/verifications', async (req, res, next) => {
+  try {
+    const { status = 'pending' } = req.query;
+    const users = await User.find({ verificationStatus: status })
+      .populate('hospitalId', 'name code')
+      .select('email role profile verificationStatus verificationNote identityDocument createdAt hospitalId')
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.status(200).json({ success: true, data: users });
+  } catch (err) { next(err); }
+});
+
+/**
+ * PATCH /api/superadmin/verifications/:userId/approve
+ * Approve a pending user — sets isActive=true, verificationStatus='approved'.
+ */
+router.patch('/verifications/:userId/approve', async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      { verificationStatus: 'approved', isActive: true, verificationNote: '' },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+    return res.status(200).json({ success: true, message: `${user.profile?.firstName} ${user.profile?.lastName} approved.`, data: user });
+  } catch (err) { next(err); }
+});
+
+/**
+ * PATCH /api/superadmin/verifications/:userId/reject
+ * Reject a pending user with an optional reason.
+ */
+router.patch('/verifications/:userId/reject', async (req, res, next) => {
+  try {
+    const { reason = 'Identity could not be verified.' } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      { verificationStatus: 'rejected', isActive: false, verificationNote: reason },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+    return res.status(200).json({ success: true, message: `${user.profile?.firstName} ${user.profile?.lastName} rejected.`, data: user });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

@@ -86,6 +86,20 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // ── Identity verification (doctors require super admin approval) ──────────
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'approved', // Patients auto-approved; doctors start as 'pending'
+    },
+    verificationNote: {
+      type: String,
+      default: '',
+    },
+    identityDocument: {
+      nmcLicense: { type: String, trim: true, default: '' },
+      nicNumber:  { type: String, trim: true, default: '' },
+    },
     // Rotating refresh token pool — max 5 concurrent sessions
     refreshTokens: {
       type: [String],

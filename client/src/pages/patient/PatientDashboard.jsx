@@ -9,6 +9,8 @@ import AppointmentsTab  from './tabs/AppointmentsTab';
 import HealthVaultTab   from './tabs/HealthVaultTab';
 import PrescriptionsTab from './tabs/PrescriptionsTab';
 import ProfileTab       from './tabs/ProfileTab';
+import HospitalsMapTab  from './tabs/HospitalsMapTab';
+import AmbulanceTab     from './tabs/AmbulanceTab';
 
 const PatientDashboard = () => {
   const { user, logout } = useAuth();
@@ -24,6 +26,8 @@ const PatientDashboard = () => {
     { id: 'appointments',  label: 'Appointments',    icon: '📅', badge: upcomingCount },
     { id: 'vault',         label: 'Health Vault',    icon: '🗂️' },
     { id: 'prescriptions', label: 'Prescriptions',   icon: '💊' },
+    { id: 'map',           label: 'Hospitals Map',   icon: '🗺️' },
+    { id: 'ambulance',     label: 'Ambulance',       icon: '🚑' },
     { id: 'profile',       label: 'My Profile',      icon: '👤' },
   ];
 
@@ -48,6 +52,8 @@ const PatientDashboard = () => {
       case 'appointments':  return <AppointmentsTab />;
       case 'vault':         return <HealthVaultTab />;
       case 'prescriptions': return <PrescriptionsTab />;
+      case 'map':           return <HospitalsMapTab />;
+      case 'ambulance':     return <AmbulanceTab />;
       case 'profile':       return <ProfileTab user={user} />;
       default:              return <OverviewTab user={user} onNavigate={setActiveTab} />;
     }
@@ -71,3 +77,4 @@ const PatientDashboard = () => {
 };
 
 export default PatientDashboard;
+

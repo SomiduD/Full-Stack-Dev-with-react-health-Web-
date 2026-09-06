@@ -43,7 +43,8 @@ const generateRefreshToken = (userId) =>
  * @param {string} [data.hospitalCode] - Required for non-super_admin
  * @param {Object} data.profile      - { firstName, lastName, ... }
  */
-const registerUser = async ({ email, password, role, hospitalCode, profile }) => {
+const registerUser = async (data) => {
+  const { email, password, role, hospitalCode, profile } = data;
   // ── Block privileged self-registration ──────────────────────────────────────
   if (role === ROLES.SUPER_ADMIN || role === ROLES.HOSPITAL_ADMIN) {
     const err = new Error('This role cannot self-register. Contact your system administrator.');
@@ -84,12 +85,20 @@ const registerUser = async ({ email, password, role, hospitalCode, profile }) =>
   }
 
   // ── Create user (password hashed by pre-save hook) ──────────────────────────
+  const isDoctor = role === ROLES.DOCTOR;
   const user = await User.create({
     email,
     passwordHash: password,
     role:         role || ROLES.PATIENT,
     hospitalId,
     profile,
+    // Doctors start pending; patients are immediately active
+    isActive:           !isDoctor,
+    verificationStatus: isDoctor ? 'pending' : 'approved',
+    identityDocument: {
+      nmcLicense: data.nmcLicense || '',
+      nicNumber:  data.nicNumber  || '',
+    },
   });
 
   // ── Issue tokens ─────────────────────────────────────────────────────────────
@@ -119,6 +128,7 @@ const loginUser = async (email, password) => {
   try {
     // Explicitly select the fields that are excluded by default
     user = await User.findOne({ email }).select('+passwordHash +refreshTokens +passwordChangedAt');
+
   } catch (dbErr) {
     // DB connection error — don't leak "Invalid email/password", surface real problem
     const err = new Error('Unable to connect to the database. Please try again shortly.');
@@ -134,6 +144,18 @@ const loginUser = async (email, password) => {
 
   if (!user.isActive) {
     const err = new Error('Your account has been deactivated. Contact your administrator.');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (user.role === ROLES.DOCTOR && user.verificationStatus === 'pending') {
+    const err = new Error('Your account is awaiting verification by the Super Admin. You will be notified once approved.');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (user.role === ROLES.DOCTOR && user.verificationStatus === 'rejected') {
+    const err = new Error(`Your verification was rejected. Reason: ${user.verificationNote || 'Contact support for details.'}`);
     err.statusCode = 403;
     throw err;
   }

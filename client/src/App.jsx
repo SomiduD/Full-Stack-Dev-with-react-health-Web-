@@ -1,8 +1,9 @@
 // client/src/App.jsx
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import OfflineBanner from './components/OfflineBanner';
-import ProtectedRoute from './components/ProtectedRoute';
+import OfflineBanner   from './components/OfflineBanner';
+import ProtectedRoute  from './components/ProtectedRoute';
+import HealthcareChat  from './components/HealthcareChat';
 
 // Auth pages
 import LoginPage    from './pages/auth/LoginPage';
@@ -34,10 +35,13 @@ const AuthRedirect = ({ children }) => {
 };
 
 function App() {
+  const { user } = useAuth();
   return (
     <>
       {/* Global offline network banner */}
       <OfflineBanner />
+      {/* Global AI healthcare chatbot — visible to all logged-in users */}
+      {user && <HealthcareChat />}
 
       <Routes>
         {/* ── Root redirect ──────────────────────────────────────────── */}

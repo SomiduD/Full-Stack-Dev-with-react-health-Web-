@@ -8,6 +8,7 @@ const STEPS = [
   { id: 1, label: 'Account Type',   icon: '🏷️' },
   { id: 2, label: 'Personal Info',  icon: '👤' },
   { id: 3, label: 'Hospital Code',  icon: '🏥' },
+  { id: 4, label: 'Verification',   icon: '🔐' },
 ];
 
 const ROLES = [
@@ -109,6 +110,8 @@ const RegisterPage = () => {
     hospitalCode:   '',
     gender:         '',
     phone:          '',
+    nmcLicense:     '',
+    nicNumber:      '',
   });
   const [showPass,     setShowPass]     = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,12 +156,27 @@ const RegisterPage = () => {
         errs.hospitalCode = 'Hospital code is required.';
     }
 
+    if (step === 4) {
+      if (form.role === 'doctor') {
+        if (!form.nmcLicense.trim()) errs.nmcLicense = 'NMC License number is required for doctors.';
+        if (!form.nicNumber.trim())  errs.nicNumber  = 'NIC number is required for identity verification.';
+      }
+    }
+
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleNext = () => {
-    if (validateStep()) setStep((s) => s + 1);
+    if (validateStep()) {
+      // Only doctors go to Step 4; patients skip straight to submit on step 3
+      if (step === 3 && form.role === 'patient') {
+        // submit directly
+        document.getElementById('hidden-submit')?.click();
+      } else {
+        setStep((s) => s + 1);
+      }
+    }
   };
 
   const handleBack = () => {
@@ -178,6 +196,8 @@ const RegisterPage = () => {
       password:     form.password,
       role:         form.role,
       hospitalCode: form.hospitalCode.toUpperCase(),
+      nmcLicense:   form.nmcLicense,
+      nicNumber:    form.nicNumber,
       profile: {
         firstName: form.firstName,
         lastName:  form.lastName,
@@ -189,11 +209,15 @@ const RegisterPage = () => {
     setIsSubmitting(false);
 
     if (result.success) {
-      const roleHome = {
-        patient: '/patient/dashboard',
-        doctor:  '/doctor/dashboard',
-      };
-      navigate(roleHome[result.user.role] || '/');
+      if (form.role === 'doctor') {
+        // Doctor stays on a pending approval screen instead of redirecting
+        setStep('pending');
+      } else {
+        const roleHome = {
+          patient: '/patient/dashboard',
+        };
+        navigate(roleHome[result.user.role] || '/');
+      }
     } else {
       setApiError(result.message);
       if (result.errors) {
@@ -460,6 +484,52 @@ const RegisterPage = () => {
               </div>
             )}
 
+            {/* ─── STEP 4: Doctor Identity Verification ─────────── */}
+            {step === 4 && (
+              <div className="animate-fade-in-up">
+                <h3 style={{ marginBottom: 6, color: 'var(--text-primary)' }}>Identity Verification</h3>
+                <p style={{ fontSize: '0.85rem', marginBottom: 'var(--sp-5)', color: 'var(--text-secondary)' }}>
+                  Doctors must provide their NMC License and NIC for identity verification.
+                  A Super Admin will review and approve your account within 1–2 business days.
+                </p>
+
+                <div style={{ background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.25)', borderRadius: 'var(--r-lg)', padding: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--indigo)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    🔐 Why is this required?
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    To protect patient safety, all doctor accounts are verified by our compliance team before activation.
+                    This ensures only licensed medical professionals can access clinical records.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                  <div className="form-group">
+                    <label htmlFor="reg-nmc" className="form-label">NMC License Number *</label>
+                    <input id="reg-nmc" type="text" className={`form-input${fieldErrors.nmcLicense ? ' error' : ''}`}
+                      placeholder="e.g. SLMC-2024-12345"
+                      value={form.nmcLicense}
+                      onChange={(e) => update('nmcLicense', e.target.value.toUpperCase())}
+                      style={{ letterSpacing: '0.05em' }}
+                    />
+                    {fieldErrors.nmcLicense && <span className="form-error">{fieldErrors.nmcLicense}</span>}
+                    <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>Sri Lanka Medical Council registration number</span>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="reg-nic" className="form-label">NIC Number *</label>
+                    <input id="reg-nic" type="text" className={`form-input${fieldErrors.nicNumber ? ' error' : ''}`}
+                      placeholder="e.g. 123456789V or 200012345678"
+                      value={form.nicNumber}
+                      onChange={(e) => update('nicNumber', e.target.value.toUpperCase())}
+                    />
+                    {fieldErrors.nicNumber && <span className="form-error">{fieldErrors.nicNumber}</span>}
+                    <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>National Identity Card number for identity verification</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ─── Navigation buttons ───────────────────────────────── */}
             <div style={{
               display:        'flex',
@@ -467,7 +537,7 @@ const RegisterPage = () => {
               gap:            'var(--sp-3)',
               marginTop:      'var(--sp-6)',
             }}>
-              {step > 1 && (
+              {typeof step === 'number' && step > 1 && (
                 <button type="button" onClick={handleBack} className="btn btn-ghost">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="15 18 9 12 15 6"/>
@@ -476,7 +546,8 @@ const RegisterPage = () => {
                 </button>
               )}
 
-              {step < 3 ? (
+              {/* Patients submit on step 3, doctors on step 4 */}
+              {typeof step === 'number' && step < (form.role === 'doctor' ? 4 : 3) ? (
                 <button type="button" id={`btn-next-step-${step}`} onClick={handleNext}
                   style={{
                     padding:'12px 28px', border:'none', borderRadius:'var(--r-md)', fontWeight:700,
@@ -492,7 +563,7 @@ const RegisterPage = () => {
                     <polyline points="9 18 15 12 9 6"/>
                   </svg>
                 </button>
-              ) : (
+              ) : typeof step === 'number' ? (
                 <button type="submit" id="btn-register-submit" disabled={isSubmitting}
                   style={{
                     padding:'12px 28px', border:'none', borderRadius:'var(--r-md)', fontWeight:700,
@@ -512,9 +583,42 @@ const RegisterPage = () => {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg></>
                   )}
                 </button>
-              )}
+              ) : null}
             </div>
           </form>
+
+          {/* ─── PENDING APPROVAL SCREEN (doctors only) ───────── */}
+          {step === 'pending' && (
+            <div className="animate-fade-in-up" style={{ textAlign: 'center', padding: 'var(--sp-6) 0' }}>
+              <div style={{ fontSize: '3.5rem', marginBottom: 'var(--sp-4)' }}>⏳</div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 'var(--sp-3)' }}>Account Pending Approval</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 'var(--sp-5)', lineHeight: 1.7 }}>
+                Your doctor account has been successfully registered.
+                A Super Admin will verify your NMC license and NIC within <strong>1–2 business days</strong>.
+                You will be able to log in once your account is approved.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', marginBottom: 'var(--sp-6)' }}>
+                {[
+                  ['✅', 'Account created', 'var(--emerald)'],
+                  ['🔐', 'Identity submitted for review', 'var(--indigo)'],
+                  ['⏳', 'Awaiting Super Admin approval', 'var(--amber)'],
+                  ['🚀', 'You’ll be notified when approved', 'var(--cyan)'],
+                ].map(([icon, text, color]) => (
+                  <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 'var(--sp-3)', background: 'var(--bg-elevated)', borderRadius: 'var(--r-md)' }}>
+                    <span style={{ fontSize: '1.1rem' }}>{icon}</span>
+                    <span style={{ fontSize: '0.88rem', color, fontWeight: 500 }}>{text}</span>
+                  </div>
+                ))}
+              </div>
+              <Link to="/login" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '12px 24px', background: 'var(--gradient-cyan)', color: '#fff',
+                borderRadius: 'var(--r-lg)', fontWeight: 700, textDecoration: 'none', fontSize: '0.95rem',
+              }}>
+                ← Back to Login
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Already have account */}
