@@ -182,6 +182,8 @@ app.use('/api/admin',          adminRoutes);
 app.use('/api/superadmin',     superAdminRoutes);
 app.use('/api/ambulance',      ambulanceRoutes);
 app.use('/api/notifications',  require('./routes/notificationRoutes'));
+// ── One-time seed (remove after production is seeded) ─────────────────────────
+app.use('/api/seed',           require('./routes/seedRoutes'));
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);
