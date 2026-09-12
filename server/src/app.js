@@ -159,7 +159,8 @@ app.use('/api/docs', (req, res, next) => {
 app.get('/docs', (_req, res) => res.redirect('/api/docs'));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) =>
+app.get('/api/health', (_req, res) => {
+  const mongoose = require('mongoose');
   res.status(200).json({
     success:     true,
     message:     'Healthcare Platform API is operational',
@@ -167,8 +168,10 @@ app.get('/api/health', (_req, res) =>
     environment: process.env.NODE_ENV,
     version:     '1.0.0',
     database:    isDBConnected() ? 'connected' : 'disconnected',
-  })
-);
+    dbName:      mongoose.connection.db?.databaseName || 'unknown',
+  });
+});
+
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth',           authRoutes);
