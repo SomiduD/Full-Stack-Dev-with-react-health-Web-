@@ -36,7 +36,15 @@ const server = http.createServer(app);
 // ─── Socket.io ───────────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin:      process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const allowed = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+        .split(',').map((o) => o.trim());
+      if (allowed.includes(origin)) return callback(null, true);
+      if (/\.vercel\.app$/.test(origin)) return callback(null, true);
+      if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    },
     methods:     ['GET', 'POST'],
     credentials: true,
   },
@@ -97,9 +105,27 @@ app.use(
   })
 );
 
+// Build an allowed-origin list from CLIENT_ORIGIN (comma-separated) plus
+// any *.vercel.app preview/production deployments.
+const ALLOWED_ORIGINS = [
+  ...(process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim()),
+];
+
 app.use(
   cors({
-    origin:      process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow server-to-server / curl calls with no Origin header
+      if (!origin) return callback(null, true);
+      // Allow explicitly whitelisted origins
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      // Allow ALL vercel.app subdomains (preview + production deployments)
+      if (/\.vercel\.app$/.test(origin)) return callback(null, true);
+      // Allow localhost on any port (dev)
+      if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    },
     credentials: true,
     methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
