@@ -23,6 +23,8 @@ const adminRoutes        = require('./routes/adminRoutes');
 const superAdminRoutes   = require('./routes/superAdminRoutes');
 const ambulanceRoutes    = require('./routes/ambulanceRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
+const swaggerUi   = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 // ─── Database ─────────────────────────────────────────────────────────────────
 connectDB();
@@ -107,6 +109,29 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// ─── Swagger UI — Interactive API Docs ───────────────────────────────────────
+// Relax Helmet CSP only for the /api/docs route (Swagger UI needs inline scripts)
+app.use('/api/docs', (req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+  );
+  next();
+}, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'MedCore API Docs',
+  customCss: `
+    .topbar { background: linear-gradient(135deg, #0c1a38, #060d1f); }
+    .topbar-wrapper img { display: none; }
+    .topbar-wrapper::before { content: '🏥 MedCore Healthcare API'; color: #00d4ff;
+      font-size: 1.2rem; font-weight: 700; margin-left: 12px; }
+    .swagger-ui .info .title { color: #00d4ff; }
+  `,
+  swaggerOptions: { persistAuthorization: true },
+}));
+
+// Convenience redirect: /docs → /api/docs
+app.get('/docs', (_req, res) => res.redirect('/api/docs'));
+
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) =>
   res.status(200).json({
@@ -127,6 +152,7 @@ app.use('/api/doctors',        doctorRoutes);
 app.use('/api/admin',          adminRoutes);
 app.use('/api/superadmin',     superAdminRoutes);
 app.use('/api/ambulance',      ambulanceRoutes);
+app.use('/api/notifications',  require('./routes/notificationRoutes'));
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);
@@ -140,6 +166,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`🚀  Server running in ${process.env.NODE_ENV || 'development'} mode`);
     console.log(`🌐  REST API  : http://localhost:${PORT}/api/health`);
+    console.log(`📖  Swagger   : http://localhost:${PORT}/api/docs`);
     console.log(`🔌  Socket.io : ws://localhost:${PORT}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   });

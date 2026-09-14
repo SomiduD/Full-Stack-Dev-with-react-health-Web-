@@ -3,6 +3,22 @@ const { validationResult } = require('express-validator');
 const { Appointment, APPOINTMENT_STATUS, TIME_SLOTS } = require('../models/Appointment');
 const { User, ROLES } = require('../models/User');
 
+// Lazy-load Notification to avoid circular deps (notificationRoutes also defines it)
+const getNotification = () => {
+  try {
+    const mongoose = require('mongoose');
+    return mongoose.models.Notification || null;
+  } catch (_) { return null; }
+};
+
+/** Fire-and-forget notification helper — never throws */
+const notify = async (userId, type, title, message, meta = {}) => {
+  try {
+    const Notification = getNotification();
+    if (Notification) await Notification.create({ userId, type, title, message, meta });
+  } catch (_) { /* notifications are best-effort */ }
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const handleValidation = (req, res) => {
@@ -237,6 +253,29 @@ const updateAppointmentStatus = async (req, res, next) => {
       { path: 'doctorId',  select: 'profile.firstName profile.lastName profile.specialization' },
       { path: 'patientId', select: 'profile.firstName profile.lastName' },
     ]);
+
+    // ── Fire-and-forget in-app notifications ────────────────────────────────────
+    const patId  = appointment.patientId._id || appointment.patientId;
+    const docId  = appointment.doctorId._id  || appointment.doctorId;
+    const apptMeta = { appointmentId: appointment._id };
+
+    if (status === APPOINTMENT_STATUS.CONFIRMED) {
+      await notify(patId, 'appointment_confirmed',
+        'Appointment Confirmed ✅',
+        `Your appointment on ${new Date(appointment.date).toDateString()} at ${appointment.timeSlot} has been confirmed.`,
+        apptMeta);
+    } else if (status === APPOINTMENT_STATUS.CANCELLED) {
+      const other = role === ROLES.PATIENT ? docId : patId;
+      await notify(other, 'appointment_cancelled',
+        'Appointment Cancelled',
+        `An appointment on ${new Date(appointment.date).toDateString()} at ${appointment.timeSlot} was cancelled.`,
+        apptMeta);
+    } else if (status === APPOINTMENT_STATUS.COMPLETED) {
+      await notify(patId, 'appointment_completed',
+        'Appointment Completed 🎉',
+        `Your appointment has been completed. ${doctorNotes ? 'Doctor notes are available.' : ''}`,
+        apptMeta);
+    }
 
     // Emit real-time status update so all connected clients stay in sync
     const io = req.app.get('io');

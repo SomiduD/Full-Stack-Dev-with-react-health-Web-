@@ -1,6 +1,7 @@
 // server/src/routes/authRoutes.js
-const express  = require('express');
-const { body } = require('express-validator');
+const express    = require('express');
+const { body }   = require('express-validator');
+const rateLimit  = require('express-rate-limit');
 const {
   register,
   login,
@@ -11,6 +12,16 @@ const {
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+// ─── Rate limiter: max 10 login/register attempts per 15 min per IP ──────────
+const authLimiter = rateLimit({
+  windowMs:    15 * 60 * 1000,  // 15 minutes
+  max:         10,
+  standardHeaders: true,
+  legacyHeaders:   false,
+  skip: () => process.env.NODE_ENV === 'test', // never limit during CI
+  message: { success: false, message: 'Too many attempts. Please try again in 15 minutes.' },
+});
 
 // ─── Validation rule sets ─────────────────────────────────────────────────────
 
@@ -49,10 +60,10 @@ const loginRules = [
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 /** POST /api/auth/register — Public self-registration (patient/doctor only) */
-router.post('/register', registerRules, register);
+router.post('/register', authLimiter, registerRules, register);
 
 /** POST /api/auth/login — Public credential authentication */
-router.post('/login', loginRules, login);
+router.post('/login', authLimiter, loginRules, login);
 
 /** POST /api/auth/refresh — Public refresh token rotation */
 router.post('/refresh', refreshToken);
